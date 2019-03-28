@@ -7,23 +7,27 @@ class BlacklistController {
 
     // add MSISDNs and MNOs
     addMSISDNAndMNO(req, res) {
-        const { msisdn, mno } = req.query;
+        let { msisdn, mno } = req.query;
+        mno = mno.toString().trim().toUpperCase(); 
         Sanitizer(msisdn)
             .then((newMsisdn) => {
                 client.sadd(mno,newMsisdn, (err, data) => {
+                    console.info(mno+"===========>", msisdn)
                     if (!err) {
-                        console.log('Saved Successfully')
-                        return res.send({
-                            error: false,
-                            message: 'Saved Successfully', data
-                        })
-                    } else {
-                        console.log('Unable to save data');
-                        return res.send({
-                            error: true,
-                            message: 'Unable to save data'
-                        })
-                    }
+                        if (data === 1) {
+                            console.log('MSISDN added sucessfully');
+                            return res.send({
+                                error:false,
+                                message: `${newMsisdn} added successfully`
+                            })
+                        } if(data === 0) {
+                            console.log('Unable to save data');
+                            return res.send({
+                                error: true,
+                                message: `${newMsisdn} already exists`
+                            })
+                        }
+                    } 
                });
             })
             .catch((err) => {
@@ -40,7 +44,8 @@ class BlacklistController {
     // fetching MSISDNs according to their respective MNOs
 
     fetchMSISDNAndMNO(req, res) {
-        const { mno } = req.query;
+        let { mno } = req.query;
+        mno = mno.toString().trim().toUpperCase();
         client.smembers(mno, (err, data) => {
             if (!err) {
             console.log('Fetch was Successful');
@@ -60,22 +65,35 @@ class BlacklistController {
 
     // delete MSISDNs and MNOs
     deleteMSISDN (req, res) {
-                const { mno, msisdn } = req.query;
-                client.srem(mno, msisdn, (err, data) => {
-                if (data == 1) {
-                    console.log('Deleted Successfully')
-                    return res.send ({
-                        error: false,
-                        message: 'Deleted Successfully', data
+                let { mno, msisdn } = req.query;
+                 mno = mno.toString().trim().toUpperCase();
+                 Sanitizer(msisdn).then( newMsisdn =>{
+                    client.srem(mno, newMsisdn, (err, data) => {
+                    if (data === 1) {
+                        console.log('Deleted Successfully')
+                        return res.send ({
+                            error: false,
+                            response: data,
+                            message: `${newMsisdn} deleted successfully`
+                        })
+                    } if(data === 0) {
+                        console.log('msisdn not found')
+                        return res.send({
+                            error: false,
+                            response: data,
+                            message: `${newMsisdn} does not exist anymore`
+                        })
+                    }
                     })
-                } else {
-                    console.log('Unable to Delete')
+                 }).catch( err=>{
                     return res.send({
-                        error: true,
-                        message: 'Unable to Delete'
+                        error: false,
+                        message: 'Ooops! Something went wrong',
+                        response: err,
+                        
                     })
-                }
-                })
+                 });
+                
             }
 }
 
